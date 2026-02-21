@@ -1,0 +1,9 @@
+services:
+  front-2:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    env_file:
+      - ./.env
+    ports:
+      - "3000:3000"
