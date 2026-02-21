@@ -14,6 +14,7 @@ async function fetchData() {
     'use server';
     return await fetch(`https://${HOST}/generate-qr`, {
         method: 'GET',
+        cache: 'no-cache',
         headers: {
             'Content-Type': 'application/json'
         }
