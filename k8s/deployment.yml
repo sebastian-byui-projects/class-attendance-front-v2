@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: class-attendace-front
-          image: ghcr.io/sebastian-byui-projects/class-attendance-front-v2:1.0.2
+          image: ghcr.io/sebastian-byui-projects/class-attendance-front-v2:1.0.4
           imagePullPolicy: IfNotPresent
           env:
             - name: HOST
