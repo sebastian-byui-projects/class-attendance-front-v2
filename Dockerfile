@@ -12,7 +12,8 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
+ENV HOST=cs111-back.study-with-me.org
+ENV NEXT_PUBLIC_HOST=cs111-back.study-with-me.org
 RUN bun run build
 
 
