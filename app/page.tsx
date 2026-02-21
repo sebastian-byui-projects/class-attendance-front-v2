@@ -1,8 +1,7 @@
-import Link from "next/link";
-import {Suspense} from "react";
+'use client';
 
-// Asegúrate de que HOST esté definido en tu .env
-const HOST = process.env.HOST || 'localhost:8000';
+import Link from "next/link";
+import {useState, useEffect} from "react";
 
 type QrResponse = {
     qr_image: string;
@@ -10,60 +9,78 @@ type QrResponse = {
     seconds_remaining: number;
 }
 
-// 1. Hacemos el fetch más defensivo
-async function fetchData(): Promise<QrResponse | null> {
-    try {
-        const response = await fetch(`https://${HOST}/generate-qr`, {
-            method: 'GET',
-            cache: 'no-store', // 'no-store' asegura que siempre traiga datos frescos en Next.js App Router
-            headers: {
-                'Content-Type': 'application/json'
+export default function Home() {
+    // 1. Estados nativos para manejar los datos y la UI
+    const [data, setData] = useState<QrResponse | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    // 2. useEffect para hacer el fetch cuando el componente se monta
+    useEffect(() => {
+        const fetchQrCode = async () => {
+            try {
+                // Usamos NEXT_PUBLIC_HOST para que sea accesible en el cliente
+                const host = process.env.NEXT_PUBLIC_HOST || 'localhost:8000';
+
+                const response = await fetch(`https://${host}/generate-qr`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error del servidor: ${response.status}`);
+                }
+
+                const text = await response.text();
+                if (!text) {
+                    throw new Error("El servidor devolvió una respuesta vacía.");
+                }
+
+                const jsonData = JSON.parse(text) as QrResponse;
+                setData(jsonData);
+
+            } catch (err: any) {
+                console.error("Fallo de conexión:", err);
+                setError(err.message || "Error al cargar el QR");
+            } finally {
+                setIsLoading(false);
             }
-        });
+        };
 
-        if (!response.ok) {
-            console.error(`Error del servidor: ${response.status} ${response.statusText}`);
-            return null;
-        }
+        fetchQrCode();
+    }, []); // El array vacío asegura que solo se ejecute al montar la página
 
-        // Leemos como texto primero para evitar el "Unexpected EOF" si viene vacío
-        const text = await response.text();
-        if (!text) return null;
-
-        return JSON.parse(text) as QrResponse;
-    } catch (error) {
-        console.error("Fallo de conexión con el backend:", error);
-        return null;
-    }
-}
-
-// 2. Componente Asíncrono que hace el fetch (este va dentro del Suspense)
-async function QrCodeFetcher() {
-    const data = await fetchData();
-
-    if (!data) {
+    // 3. Manejo de estado de carga
+    if (isLoading) {
         return (
-            <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-md text-center">
-                ❌ Error cargando el código QR. Verifica que el backend esté encendido.
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+                <div className="text-gray-500 animate-pulse font-medium">Generando QR...</div>
             </div>
         );
     }
 
-    return <QrCode data={data}/>;
-}
+    // 4. Manejo de estado de error
+    if (error || !data) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
+                <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-md text-center max-w-sm">
+                    ❌ {error || "Error cargando el código QR. Verifica el backend."}
+                </div>
+            </div>
+        );
+    }
 
-// 3. Página principal (Síncrona o Asíncrona) que envuelve el fetcher en Suspense
-export default function Home() {
+    // 5. Estado de éxito (mostramos el QR)
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-            <Suspense fallback={<div className="text-gray-500 animate-pulse font-medium">Generando QR...</div>}>
-                <QrCodeFetcher/>
-            </Suspense>
+            <QrCode data={data}/>
         </div>
     );
 }
 
-// 4. Componente de UI puro
+// El componente QrCode se queda exactamente igual, no necesita cambios
 function QrCode({data}: { data: QrResponse }) {
     return (
         <div
@@ -80,7 +97,7 @@ function QrCode({data}: { data: QrResponse }) {
                         className="w-64 h-64"
                     />
                 ) : (
-                    <div className="w-64 h-64 bg-gray-200 flex items-center justify-center">
+                    <div className="w-64 h-64 bg-gray-200 flex items-center justify-center text-gray-500">
                         Sin imagen
                     </div>
                 )}
